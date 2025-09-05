@@ -1,0 +1,180 @@
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: crypto-config/ordererOrganizations/university.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &Block33
+    Name: Block33MSP
+    ID: Block33MSP
+    MSPDir: crypto-config/peerOrganizations/block33.university.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('Block33MSP.admin', 'Block33MSP.peer', 'Block33MSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('Block33MSP.admin', 'Block33MSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('Block33MSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('Block33MSP.peer')"
+    AnchorPeers:
+      - Host: peer0.block33.university.com
+        Port: 7051
+
+  - &Block34
+    Name: Block34MSP
+    ID: Block34MSP
+    MSPDir: crypto-config/peerOrganizations/block34.university.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('Block34MSP.admin', 'Block34MSP.peer', 'Block34MSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('Block34MSP.admin', 'Block34MSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('Block34MSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('Block34MSP.peer')"
+    AnchorPeers:
+      - Host: peer0.block34.university.com
+        Port: 8051
+
+  - &Block35
+    Name: Block35MSP
+    ID: Block35MSP
+    MSPDir: crypto-config/peerOrganizations/block35.university.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('Block35MSP.admin', 'Block35MSP.peer', 'Block35MSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('Block35MSP.admin', 'Block35MSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('Block35MSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('Block35MSP.peer')"
+    AnchorPeers:
+      - Host: peer0.block35.university.com
+        Port: 9051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_0: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.university.com
+        Port: 7050
+        ClientTLSCert: crypto-config/ordererOrganizations/university.com/orderers/orderer.university.com/tls/server.crt
+        ServerTLSCert: crypto-config/ordererOrganizations/university.com/orderers/orderer.university.com/tls/server.crt
+  Addresses:
+    - orderer.university.com:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  UniversityOrdererGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Consortiums:
+      UniversityConsortium:
+        Organizations:
+          - *Block33
+          - *Block34
+          - *Block35
+
+  UniversityChannel:
+    Consortium: UniversityConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Block33
+        - *Block34
+        - *Block35
+      Capabilities:
+        <<: *ApplicationCapabilities
+

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Dashboard - Room Reservation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chalkboard-teacher me-2"></i>Professor Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/monitor">
+                    <i class="fas fa-chart-line"></i> Monitor
+                </a>
+                <a class="nav-link" href="/blockchain">
+                    <i class="fas fa-cubes"></i> Blockchain
+                </a>
+                <a class="nav-link" href="/navigation">
+                    <i class="fas fa-compass"></i> Navigation
+                </a>
+                <span class="navbar-text me-3">
+                    Welcome, <span id="user-name">{{ user_id }}</span>
+                    <span class="badge bg-success ms-1">Professor</span>
+                </span>
+                <a class="nav-link" href="/api/logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-plus-circle me-2"></i>Make Reservation</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="reservationForm">
+                            <div class="mb-3">
+                                <label class="form-label">Block</label>
+                                <select class="form-select" id="block" name="block" required>
+                                    <option value="33">Block 33</option>
+                                    <option value="34">Block 34</option>
+                                    <option value="35">Block 35</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Room</label>
+                                <select class="form-select" id="room" name="room" required>
+                                    <option value="">Select a room</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="date" name="date" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Start Time</label>
+                                <select class="form-select" id="time" name="time" required>
+                                    <option value="">Select time</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Duration</label>
+                                <select class="form-select" id="duration" name="duration" required>
+                                    <option value="60">1 hour</option>
+                                    <option value="90">1.5 hours</option>
+                                    <option value="120">2 hours</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-calendar-plus me-2"></i>Make Reservation
+                            </button>
+                        </form>
+
+                        <div class="alert alert-info mt-3" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Professor Privileges:</strong><br>
+                            • Cancel any student reservation<br>
+                            • Override existing reservations<br>
+                            • Make priority bookings
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Status -->
+                <div class="card mt-3">
+                    <div class="card-header bg-success text-white">
+                        <h6><i class="fas fa-network-wired me-2"></i>Network Status</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="network-status">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="status-indicator connected me-2"></div>
+                                <small>Connected to Blockchain</small>
+                            </div>
+                            <div id="peer-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9">
+                <div class="row mb-3">
+                    <div class="col">
+                        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="calendar-tab" data-bs-toggle="tab"
+                                    data-bs-target="#calendar" type="button" role="tab">
+                                    <i class="fas fa-calendar me-2"></i>Calendar View
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="my-reservations-tab" data-bs-toggle="tab"
+                                    data-bs-target="#my-reservations" type="button" role="tab">
+                                    <i class="fas fa-list me-2"></i>My Reservations
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="all-reservations-tab" data-bs-toggle="tab"
+                                    data-bs-target="#all-reservations" type="button" role="tab">
+                                    <i class="fas fa-users me-2"></i>All Reservations
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="available-rooms-tab" data-bs-toggle="tab"
+                                    data-bs-target="#available-rooms" type="button" role="tab">
+                                    <i class="fas fa-search me-2"></i>Available Rooms
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="mainTabContent">
+                    <!-- Calendar Tab -->
+                    <div class="tab-pane fade show active" id="calendar" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="fas fa-calendar me-2"></i>Room Reservations Calendar</h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-success" id="prev-btn">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" id="today-btn">Today</button>
+                                    <button type="button" class="btn btn-outline-success" id="next-btn">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="calendar-container"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- My Reservations Tab -->
+                    <div class="tab-pane fade" id="my-reservations" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-list me-2"></i>My Reservations</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="my-reservations-list">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-success" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Reservations Tab -->
+                    <div class="tab-pane fade" id="all-reservations" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="fas fa-users me-2"></i>All Reservations</h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-success" id="refresh-all">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Filter by Block</label>
+                                        <select class="form-select form-select-sm" id="filter-block">
+                                            <option value="">All Blocks</option>
+                                            <option value="33">Block 33</option>
+                                            <option value="34">Block 34</option>
+                                            <option value="35">Block 35</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Filter by Date</label>
+                                        <input type="date" class="form-control form-control-sm" id="filter-date">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Filter by User Type</label>
+                                        <select class="form-select form-select-sm" id="filter-user-type">
+                                            <option value="">All Users</option>
+                                            <option value="student">Students</option>
+                                            <option value="professor">Professors</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button class="btn btn-success btn-sm w-100" id="apply-filters">
+                                            <i class="fas fa-filter"></i> Apply Filters
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="all-reservations-list">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-success" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available Rooms Tab -->
+                    <div class="tab-pane fade" id="available-rooms" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-search me-2"></i>Check Room Availability</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="availability-date">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Start Time</label>
+                                        <input type="time" class="form-control" id="availability-start-time">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">End Time</label>
+                                        <input type="time" class="form-control" id="availability-end-time">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button class="btn btn-success w-100" id="check-availability">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="available-rooms-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reservation Details Modal -->
+    <div class="modal fade" id="reservationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reservation Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="reservation-details">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" id="cancel-reservation-btn" style="display: none;">
+                        Cancel Reservation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Override Reservation Modal -->
+    <div class="modal fade" id="overrideModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">Override Existing Reservation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        This time slot is already reserved. As a professor, you can override this reservation.
+                    </div>
+                    <div id="existing-reservation-details"></div>
+                    <p><strong>Do you want to cancel the existing reservation and create your own?</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" id="confirm-override">
+                        <i class="fas fa-user-shield me-2"></i>Override Reservation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        $(document).ready(function () {
+            const userId = '{{ user_id }}';
+            const userType = 'professor';
+
+            // Initialize the application
+            window.roomReservationApp = new RoomReservationApp(userId, userType);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Explorer - University Room Reservation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <style>
+        .blockchain-container {
+            display: flex;
+            overflow-x: auto;
+            padding: 20px 0;
+            gap: 20px;
+        }
+
+        .block-card {
+            min-width: 350px;
+            max-width: 350px;
+            border: 2px solid #007bff;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .genesis-block {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border-color: #28a745;
+        }
+
+        .block-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .block-hash {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            word-break: break-all;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+
+        .transaction-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            border-left: 3px solid #ffc107;
+        }
+
+        .transaction-item.REGISTER_USER {
+            border-left-color: #28a745;
+        }
+
+        .transaction-item.MAKE_RESERVATION {
+            border-left-color: #007bff;
+        }
+
+        .transaction-item.CANCEL_RESERVATION {
+            border-left-color: #dc3545;
+        }
+
+        .transaction-item.MINING_REWARD {
+            border-left-color: #ffc107;
+        }
+
+        .pending-pool {
+            background: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 300px;
+            color: #856404;
+        }
+
+        .chain-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #007bff;
+            min-width: 50px;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .mine-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .mining-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .hash-link {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .hash-link:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-cubes me-2"></i>Blockchain Explorer
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a class="nav-link" href="/monitor">
+                    <i class="fas fa-chart-line"></i> Monitor
+                </a>
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i> Dashboards
+                    </a>
+                    <ul class="dropdown-menu" id="dashboard-links">
+                        <li><a class="dropdown-item" href="/navigation"><i class="fas fa-compass me-2"></i>All
+                                Routes</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Blockchain Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h3 id="total-blocks">0</h3>
+                    <p>Total Blocks</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h3 id="total-transactions">0</h3>
+                    <p>Total Transactions</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h3 id="pending-transactions">0</h3>
+                    <p>Pending Transactions</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h3 id="chain-validity">
+                        <i class="fas fa-check-circle text-success"></i>
+                    </h3>
+                    <p>Chain Valid</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blockchain Visualization -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-link me-2"></i>Blockchain Visualization</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshBlockchain()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="mineBlock()" id="mine-btn">
+                        <i class="fas fa-hammer"></i> Mine Block
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="blockchain-container" class="blockchain-container">
+                    <div class="text-center w-100">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading blockchain...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Details Modal -->
+        <div class="modal fade" id="transactionModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Transaction Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="transaction-details">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Block Details Modal -->
+        <div class="modal fade" id="blockModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Block Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="block-details">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+    <script>
+        let socket = null;
+        let blockchainData = null;
+
+        $(document).ready(function () {
+            initializeBlockchainExplorer();
+            connectWebSocket();
+
+            // Auto-refresh every 15 seconds
+            setInterval(refreshBlockchain, 15000);
+        });
+
+        function initializeBlockchainExplorer() {
+            refreshBlockchain();
+        }
+
+        function connectWebSocket() {
+            socket = io();
+
+            socket.on('connect', function () {
+                console.log('Connected to blockchain updates');
+            });
+
+            socket.on('blockchain_update', function (data) {
+                if (data.type === 'new_block_mined') {
+                    showAlert('success', `New block #${data.block.index} mined!`);
+                    refreshBlockchain();
+                }
+            });
+
+            socket.on('reservation_update', function (data) {
+                // Refresh blockchain when new transactions occur
+                setTimeout(refreshBlockchain, 1000);
+            });
+        }
+
+        async function refreshBlockchain() {
+            try {
+                const response = await fetch('/api/blockchain-data');
+                const data = await response.json();
+
+                if (data.success) {
+                    blockchainData = data;
+                    updateBlockchainView(data);
+                    updateStats(data.stats);
+                } else {
+                    showAlert('error', data.error);
+                }
+            } catch (error) {
+                showAlert('error', `Failed to load blockchain: ${error.message}`);
+            }
+        }
+
+        function updateStats(stats) {
+            $('#total-blocks').text(stats.total_blocks);
+            $('#total-transactions').text(stats.total_transactions);
+            $('#pending-transactions').text(stats.pending_transactions);
+
+            const validityIcon = stats.is_valid ?
+                '<i class="fas fa-check-circle text-success"></i>' :
+                '<i class="fas fa-times-circle text-danger"></i>';
+            $('#chain-validity').html(validityIcon);
+        }
+
+        function updateBlockchainView(data) {
+            const container = $('#blockchain-container');
+            let html = '';
+
+            // Add blocks
+            data.blockchain.forEach((block, index) => {
+                const isGenesis = block.index === 0;
+                const blockClass = isGenesis ? 'genesis-block' : '';
+
+                html += `
+                    <div class="block-card ${blockClass}" onclick="showBlockDetails(${block.index})">
+                        <div class="block-header">
+                            <h5><i class="fas fa-cube me-2"></i>Block #${block.index}</h5>
+                            ${isGenesis ? '<span class="badge bg-success">Genesis</span>' : ''}
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Hash:</strong>
+                            <div class="block-hash hash-link" title="Click to view block details">
+                                ${block.hash.substring(0, 16)}...
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Previous Hash:</strong>
+                            <div class="block-hash">
+                                ${block.previous_hash.substring(0, 16)}...
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Timestamp:</strong>
+                            <div>${new Date(block.timestamp * 1000).toLocaleString()}</div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Nonce:</strong> ${block.nonce}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <strong>Transactions (${block.transaction_count}):</strong>
+                        </div>
+                        
+                        <div style="max-height: 200px; overflow-y: auto;">
+                            ${block.transactions.map(tx => `
+                                <div class="transaction-item ${tx.tx_type}" onclick="showTransactionDetails('${tx.tx_id}'); event.stopPropagation();">
+                                    <div style="font-size: 0.8rem;">
+                                        <strong>${tx.tx_type.replace('_', ' ')}</strong>
+                                        <br>
+                                        <span style="font-family: monospace;">${tx.tx_id.substring(0, 8)}...</span>
+                                        <br>
+                                        <span>by ${tx.user_id}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                // Add arrow between blocks (except for the last block)
+                if (index < data.blockchain.length - 1) {
+                    html += '<div class="chain-arrow"><i class="fas fa-arrow-right"></i></div>';
+                }
+            });
+
+            // Add pending transactions pool
+            if (data.pending_transactions.length > 0) {
+                html += '<div class="chain-arrow"><i class="fas fa-arrow-right"></i></div>';
+                html += `
+                    <div class="pending-pool">
+                        <div class="text-center mb-3">
+                            <h5><i class="fas fa-clock me-2"></i>Pending Transactions</h5>
+                            <span class="badge bg-warning">${data.pending_transactions.length} waiting</span>
+                        </div>
+                        
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${data.pending_transactions.map(tx => `
+                                <div class="transaction-item ${tx.tx_type}" onclick="showTransactionDetails('${tx.tx_id}')">
+                                    <div style="font-size: 0.8rem;">
+                                        <strong>${tx.tx_type.replace('_', ' ')}</strong>
+                                        <br>
+                                        <span style="font-family: monospace;">${tx.tx_id.substring(0, 8)}...</span>
+                                        <br>
+                                        <span>by ${tx.user_id}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <button class="btn btn-warning btn-sm" onclick="mineBlock()">
+                                <i class="fas fa-hammer"></i> Mine Block
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.html(html);
+        }
+
+        async function mineBlock() {
+            const btn = $('#mine-btn');
+            const originalHtml = btn.html();
+
+            btn.html('<i class="fas fa-spinner fa-spin"></i> Mining...').prop('disabled', true);
+            btn.addClass('mining-animation');
+
+            try {
+                const response = await fetch('/api/mine-block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', result.message);
+                    refreshBlockchain();
+                } else {
+                    showAlert('warning', result.error);
+                }
+            } catch (error) {
+                showAlert('error', `Mining failed: ${error.message}`);
+            } finally {
+                btn.html(originalHtml).prop('disabled', false);
+                btn.removeClass('mining-animation');
+            }
+        }
+
+        function showBlockDetails(blockIndex) {
+            if (!blockchainData) return;
+
+            const block = blockchainData.blockchain[blockIndex];
+            if (!block) return;
+
+            const html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Block Information</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Index:</strong></td><td>${block.index}</td></tr>
+                            <tr><td><strong>Hash:</strong></td><td style="font-family: monospace; word-break: break-all;">${block.hash}</td></tr>
+                            <tr><td><strong>Previous Hash:</strong></td><td style="font-family: monospace; word-break: break-all;">${block.previous_hash}</td></tr>
+                            <tr><td><strong>Merkle Root:</strong></td><td style="font-family: monospace; word-break: break-all;">${block.merkle_root}</td></tr>
+                            <tr><td><strong>Timestamp:</strong></td><td>${new Date(block.timestamp * 1000).toLocaleString()}</td></tr>
+                            <tr><td><strong>Nonce:</strong></td><td>${block.nonce}</td></tr>
+                            <tr><td><strong>Transactions:</strong></td><td>${block.transaction_count}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Transactions</h6>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            ${block.transactions.map(tx => `
+                                <div class="card mb-2">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title">${tx.tx_type.replace('_', ' ')}</h6>
+                                        <p class="card-text" style="font-size: 0.8rem;">
+                                            <strong>ID:</strong> ${tx.tx_id}<br>
+                                            <strong>User:</strong> ${tx.user_id}<br>
+                                            <strong>Time:</strong> ${new Date(tx.timestamp * 1000).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            $('#block-details').html(html);
+            new bootstrap.Modal(document.getElementById('blockModal')).show();
+        }
+
+        function showTransactionDetails(txId) {
+            if (!blockchainData) return;
+
+            let transaction = null;
+
+            // Search in blocks
+            for (const block of blockchainData.blockchain) {
+                transaction = block.transactions.find(tx => tx.tx_id === txId);
+                if (transaction) break;
+            }
+
+            // Search in pending transactions
+            if (!transaction) {
+                transaction = blockchainData.pending_transactions.find(tx => tx.tx_id === txId);
+            }
+
+            if (!transaction) return;
+
+            const html = `
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Transaction Details</h6>
+                        <table class="table">
+                            <tr><td><strong>Transaction ID:</strong></td><td style="font-family: monospace;">${transaction.tx_id}</td></tr>
+                            <tr><td><strong>Type:</strong></td><td><span class="badge bg-primary">${transaction.tx_type.replace('_', ' ')}</span></td></tr>
+                            <tr><td><strong>User:</strong></td><td>${transaction.user_id}</td></tr>
+                            <tr><td><strong>Timestamp:</strong></td><td>${new Date(transaction.timestamp * 1000).toLocaleString()}</td></tr>
+                            <tr><td><strong>Signature:</strong></td><td style="font-family: monospace; word-break: break-all;">${transaction.signature}</td></tr>
+                        </table>
+                        
+                        <h6>Transaction Data</h6>
+                        <pre class="bg-light p-3" style="border-radius: 5px; max-height: 300px; overflow-y: auto;">${JSON.stringify(transaction.data, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+
+            $('#transaction-details').html(html);
+            new bootstrap.Modal(document.getElementById('transactionModal')).show();
+        }
+
+        function showAlert(type, message) {
+            const alertClass = type === 'error' ? 'danger' : type;
+            const alertHtml = `
+                <div class="alert alert-${alertClass} alert-dismissible fade show position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" role="alert">
+                    <i class="fas fa-${getAlertIcon(type)} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+
+            $('body').append(alertHtml);
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                $('.alert').alert('close');
+            }, 5000);
+        }
+
+        function getAlertIcon(type) {
+            switch (type) {
+                case 'success': return 'check-circle';
+                case 'error': return 'exclamation-circle';
+                case 'warning': return 'exclamation-triangle';
+                case 'info': return 'info-circle';
+                default: return 'info-circle';
+            }
+        }
+    </script>
+</body>
+
+</html>

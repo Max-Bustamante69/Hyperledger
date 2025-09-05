@@ -1,0 +1,87 @@
+{
+  "name": "university-network",
+  "version": "1.0.0",
+  "client": {
+    "organization": "Block33",
+    "connection": {
+      "timeout": {
+        "peer": {
+          "endorser": "300"
+        },
+        "orderer": "300"
+      }
+    }
+  },
+  "organizations": {
+    "Block33": {
+      "mspid": "Block33MSP",
+      "peers": ["peer0.block33.university.com"],
+      "certificateAuthorities": ["ca.university.com"]
+    },
+    "Block34": {
+      "mspid": "Block34MSP",
+      "peers": ["peer0.block34.university.com"]
+    },
+    "Block35": {
+      "mspid": "Block35MSP",
+      "peers": ["peer0.block35.university.com"]
+    }
+  },
+  "orderers": {
+    "orderer.university.com": {
+      "url": "grpcs://localhost:7050",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "orderer.university.com",
+        "hostnameOverride": "orderer.university.com"
+      }
+    }
+  },
+  "peers": {
+    "peer0.block33.university.com": {
+      "url": "grpcs://localhost:7051",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.block33.university.com",
+        "hostnameOverride": "peer0.block33.university.com"
+      }
+    },
+    "peer0.block34.university.com": {
+      "url": "grpcs://localhost:8051",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.block34.university.com",
+        "hostnameOverride": "peer0.block34.university.com"
+      }
+    },
+    "peer0.block35.university.com": {
+      "url": "grpcs://localhost:9051",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.block35.university.com",
+        "hostnameOverride": "peer0.block35.university.com"
+      }
+    }
+  },
+  "certificateAuthorities": {
+    "ca.university.com": {
+      "url": "https://localhost:7054",
+      "caName": "ca.university.com",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+      },
+      "httpOptions": {
+        "verify": false
+      }
+    }
+  }
+}
+
