@@ -49,6 +49,7 @@ Thumbs.db
 
 # Application specific
 # Blockchain persistence files
+*.pkl
 blockchain_state.pkl
 reservations_state.pkl
 user_sessions.pkl
