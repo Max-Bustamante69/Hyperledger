@@ -201,6 +201,9 @@
                     <button class="btn btn-sm btn-outline-primary" onclick="refreshBlockchain()">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
+                    <button class="btn btn-sm btn-success" onclick="downloadBlockchainState()">
+                        <i class="fas fa-download"></i> Download State
+                    </button>
                     <button class="btn btn-sm btn-warning" onclick="mineBlock()" id="mine-btn">
                         <i class="fas fa-hammer"></i> Mine Block
                     </button>
@@ -449,6 +452,44 @@
             } finally {
                 btn.html(originalHtml).prop('disabled', false);
                 btn.removeClass('mining-animation');
+            }
+        }
+
+        async function downloadBlockchainState() {
+            try {
+                showAlert('info', 'Preparing blockchain state for download...');
+
+                const response = await fetch('/api/blockchain-download');
+
+                if (response.ok) {
+                    // Get filename from Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'blockchain_state.json';
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename=([^;]+)/);
+                        if (filenameMatch) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showAlert('success', 'Blockchain state downloaded successfully!');
+                } else {
+                    const errorData = await response.json();
+                    showAlert('error', `Download failed: ${errorData.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showAlert('error', `Download failed: ${error.message}`);
             }
         }
 
