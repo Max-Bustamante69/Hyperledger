@@ -6,6 +6,8 @@ from typing import List, Dict, Optional
 import uuid
 import hashlib
 import time
+import pickle
+import os
 
 # For this demo, we'll simulate the blockchain client with actual blockchain structure
 # In a real implementation, you'd use the Hyperledger Fabric Python SDK
@@ -189,16 +191,25 @@ class BlockchainClient:
         self.users = {}
         self.rooms = self._generate_rooms()
         self.pending_tx_pool = []
+        
+        # Persistence file paths
+        self.blockchain_file = 'blockchain_state.pkl'
+        self.reservations_file = 'reservations_state.pkl'
+        
         logger.info("Blockchain client initialized with actual blockchain structure")
         
-        # Initialize with default admin user for testing
-        self.users['admin'] = {
-            'id': 'admin',
-            'name': 'System Admin',
-            'email': 'admin@university.edu',
-            'userType': 'professor',
-            'block': '33'
-        }
+        # Load persisted state
+        self._load_persisted_state()
+        
+        # Initialize with default admin user for testing if no users exist
+        if not self.users:
+            self.users['admin'] = {
+                'id': 'admin',
+                'name': 'System Admin',
+                'email': 'admin@university.edu',
+                'userType': 'professor',
+                'block': '33'
+            }
     
     def _mine_block(self):
         """Mine pending transactions into a new block"""
@@ -209,8 +220,142 @@ class BlockchainClient:
             # Commit pending reservations to active state
             self._commit_pending_reservations()
             
+            # Save blockchain state after mining
+            self._save_blockchain_state()
+            
             return new_block
         return None
+    
+    def _save_blockchain_state(self):
+        """Save the complete blockchain state to disk"""
+        try:
+            # Save blockchain data
+            blockchain_data = {
+                'chain': [block.to_dict() for block in self.blockchain.chain],
+                'pending_transactions': [tx.to_dict() for tx in self.blockchain.pending_transactions],
+                'mining_difficulty': self.blockchain.mining_difficulty,
+                'mining_reward': self.blockchain.mining_reward
+            }
+            
+            with open(self.blockchain_file, 'wb') as f:
+                pickle.dump(blockchain_data, f)
+            
+            # Save reservations data
+            reservations_data = {
+                'reservations': self.reservations,
+                'users': self.users
+            }
+            
+            with open(self.reservations_file, 'wb') as f:
+                pickle.dump(reservations_data, f)
+            
+            logger.info("Blockchain state saved successfully")
+            
+        except Exception as e:
+            logger.error(f"Error saving blockchain state: {str(e)}")
+    
+    def _load_persisted_state(self):
+        """Load the blockchain state from disk"""
+        try:
+            # Load blockchain data
+            if os.path.exists(self.blockchain_file):
+                with open(self.blockchain_file, 'rb') as f:
+                    blockchain_data = pickle.load(f)
+                
+                # Restore blockchain
+                self.blockchain.chain = []
+                self.blockchain.pending_transactions = []
+                
+                # Recreate blocks from saved data
+                for block_data in blockchain_data['chain']:
+                    # Recreate transactions
+                    transactions = []
+                    for tx_data in block_data['transactions']:
+                        tx = Transaction(
+                            tx_data['tx_type'],
+                            tx_data['data'],
+                            tx_data['user_id']
+                        )
+                        # Restore original values
+                        tx.tx_id = tx_data['tx_id']
+                        tx.timestamp = tx_data['timestamp']
+                        tx.signature = tx_data['signature']
+                        transactions.append(tx)
+                    
+                    # Recreate block
+                    block = Block(
+                        block_data['index'],
+                        transactions,
+                        block_data['previous_hash']
+                    )
+                    # Restore original values
+                    block.timestamp = block_data['timestamp']
+                    block.hash = block_data['hash']
+                    block.merkle_root = block_data['merkle_root']
+                    block.nonce = block_data['nonce']
+                    
+                    self.blockchain.chain.append(block)
+                
+                # Restore pending transactions
+                for tx_data in blockchain_data['pending_transactions']:
+                    tx = Transaction(
+                        tx_data['tx_type'],
+                        tx_data['data'],
+                        tx_data['user_id']
+                    )
+                    tx.tx_id = tx_data['tx_id']
+                    tx.timestamp = tx_data['timestamp']
+                    tx.signature = tx_data['signature']
+                    self.blockchain.pending_transactions.append(tx)
+                
+                # Restore blockchain settings
+                self.blockchain.mining_difficulty = blockchain_data.get('mining_difficulty', 2)
+                self.blockchain.mining_reward = blockchain_data.get('mining_reward', 10)
+                
+                logger.info(f"Loaded blockchain with {len(self.blockchain.chain)} blocks and {len(self.blockchain.pending_transactions)} pending transactions")
+            
+            # Load reservations and users data
+            if os.path.exists(self.reservations_file):
+                with open(self.reservations_file, 'rb') as f:
+                    reservations_data = pickle.load(f)
+                
+                self.reservations = reservations_data.get('reservations', [])
+                self.users = reservations_data.get('users', {})
+                
+                logger.info(f"Loaded {len(self.reservations)} reservations and {len(self.users)} users")
+            
+        except Exception as e:
+            logger.error(f"Error loading persisted state: {str(e)}")
+            # Continue with empty state if loading fails
+    
+    def download_blockchain_state(self) -> Dict:
+        """Get complete blockchain state for download"""
+        try:
+            blockchain_data = {
+                'blockchain': {
+                    'chain': [block.to_dict() for block in self.blockchain.chain],
+                    'pending_transactions': [tx.to_dict() for tx in self.blockchain.pending_transactions],
+                    'stats': self.blockchain.get_blockchain_stats()
+                },
+                'application_state': {
+                    'reservations': self.reservations,
+                    'users': self.users,
+                    'rooms': self.rooms
+                },
+                'export_timestamp': datetime.now().isoformat(),
+                'export_version': '1.0'
+            }
+            
+            return {
+                'success': True,
+                'data': blockchain_data
+            }
+        except Exception as e:
+            logger.error(f"Error preparing blockchain state for download: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     def _get_committed_reservations(self):
         """Get only committed (active) reservations from blockchain state"""
@@ -298,6 +443,9 @@ class BlockchainClient:
             logger.info(f"User {user_id} registered as {user_type}")
             logger.info(f"User data stored: {self.users[user_id]}")
             logger.info(f"Total users in system: {len(self.users)}")
+            
+            # Save state after adding transaction
+            self._save_blockchain_state()
             
             # Mine block if we have enough transactions (every 3 transactions)
             if len(self.blockchain.pending_transactions) >= 3:
@@ -396,6 +544,9 @@ class BlockchainClient:
             
             self.reservations.append(reservation)
             
+            # Save state after adding transaction
+            self._save_blockchain_state()
+            
             # Mine block if we have enough transactions
             if len(self.blockchain.pending_transactions) >= 3:
                 self._mine_block()
@@ -447,6 +598,9 @@ class BlockchainClient:
                     # Update local state
                     reservation['status'] = 'cancelled'
                     reservation['cancelledBy'] = cancelled_by_user_id
+                    
+                    # Save state after adding transaction
+                    self._save_blockchain_state()
                     
                     # Mine block if we have enough transactions
                     if len(self.blockchain.pending_transactions) >= 3:

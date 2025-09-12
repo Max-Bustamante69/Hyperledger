@@ -223,6 +223,35 @@ def get_blockchain_data():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/blockchain-download')
+def download_blockchain_state():
+    """Download complete blockchain state as JSON"""
+    try:
+        if not blockchain_client:
+            return jsonify({'success': False, 'error': 'Blockchain client not initialized'})
+        
+        data = blockchain_client.download_blockchain_state()
+        if data['success']:
+            # Return the data as a downloadable JSON file
+            from flask import Response
+            import json
+            
+            json_data = json.dumps(data['data'], indent=2, default=str)
+            filename = f"blockchain_state_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            
+            return Response(
+                json_data,
+                mimetype='application/json',
+                headers={
+                    'Content-Disposition': f'attachment; filename={filename}',
+                    'Content-Type': 'application/json'
+                }
+            )
+        else:
+            return jsonify(data)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/mine-block', methods=['POST'])
 def mine_block():
     """Manually trigger block mining"""
