@@ -379,28 +379,5 @@ LOG_LEVEL=DEBUG
 - [Docker Documentation](https://docs.docker.com/)
 - [Go Programming Language](https://golang.org/doc/)
 
-## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is for educational purposes. Please check with your university regarding usage and distribution policies.
-
-## 🆘 Support
-
-For issues and questions:
-
-1. Check the troubleshooting section
-2. Review the logs for error messages
-3. Ensure all prerequisites are installed correctly
-4. Verify Docker is running and has sufficient resources
-
----
-
-**Note**: This system is designed for educational purposes and demonstrates blockchain technology in a university setting. For production use, additional security measures and optimizations would be required.
 
